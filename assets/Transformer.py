@@ -50,8 +50,7 @@ class Transformer(nn.Module):
             self.src_mask = mask
 
         src = self.pos_encoder(src)
-        #output = self.transformer_encoder(src, self.src_mask)
-        output = self.transformer_encoder(src)
+        output = self.transformer_encoder(src, self.src_mask)
         output = self.layer_1(output)
         output = self.relu(output)
         output = self.layer_2(output)
