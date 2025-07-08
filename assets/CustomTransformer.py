@@ -3,8 +3,8 @@ from idlelib import query
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import TransformerEncoderLayer
-
+from torch.nn import TransformerEncoderLayer, TransformerEncoder
+from assets.utils import PositionalEncoding
 
 class MultiheadAttention(nn.Module):
     def __init__(self,embed_dim,num_heads,dropout=0.1):
@@ -150,9 +150,9 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout2 = nn.Dropout(dropout)
 
         if activation == "relu":
-            self.activation = F.ReLU()
+            self.activation = nn.ReLU()
         elif activation == "gelu":
-            self.activation = F.gelu()
+            self.activation = nn.gelu()
         else:
             raise RuntimeError(f"沒有這個 {activation} 激勵函數")
 
@@ -284,8 +284,38 @@ class TransformerDecoderLayer(nn.Module):
 
 
 
-# class Transformer(nn.Module):
-#
+class Transformer(nn.Module):
+    def __init__(self,src_vocab_size, tgt_vocab_size ,d_model,n_heads):
+        super(Transformer, self).__init__()
+        self.encoder = TransformerEncoderLayer(d_model,n_heads,dim_feedforward=1024,dropout=0.1,activation="relu")
+        self.decoder = TransformerDecoderLayer(d_model, n_heads, dim_feedforward=1024, dropout=0.1, activation="relu")
+        self.pos_encoding = PositionalEncoding(d_model, src_vocab_size)
+        self.fc_out = nn.Linear(d_model, tgt_vocab_size)
 
+    def create_padding_mask(self, seq, pad_idx):
+        mask = (seq != pad_idx).unsqueeze(1).unsqueeze(2)
+        return mask  # Shape: (batch_size, 1, 1, seq_len)
 
+    def create_look_ahead_mask(self, seq_len, device):
+        look_ahead_mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1).bool().to(device)
+        return ~look_ahead_mask.unsqueeze(0).unsqueeze(0)  # Shape: (1, 1, seq_len, seq_len)
+    def forward(self, src, trg, src_pad_idx, trg_pad_idx):
+        # Create masks
+        src_mask = self.create_padding_mask(src, src_pad_idx)  # For encoder self-attention & decoder cross-attention
+        trg_padding_mask = self.create_padding_mask(trg, trg_pad_idx)  # For decoder self-attention
+        trg_look_ahead_mask = self.create_look_ahead_mask(trg.size(1), trg.device)  # For decoder self-attention
+        print(trg_padding_mask.shape)
+        print(trg_look_ahead_mask.shape)
+        # Combine decoder self-attention masks:
+        # We need to mask padding AND future tokens
+        trg_mask = trg_padding_mask & trg_look_ahead_mask
 
+        # Encoder forward pass
+        enc_output = self.encoder(src, src_mask)
+
+        # Decoder forward pass
+        dec_output = self.decoder(trg, enc_output, trg_mask, src_mask)
+
+        # Final linear layer
+        output = self.fc_out(dec_output)  # (batch_size, trg_seq_len, trg_vocab_size)
+        return output
