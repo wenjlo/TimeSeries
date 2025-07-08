@@ -280,3 +280,11 @@ class TransformerDecoderLayer(nn.Module):
         tgt = self.norm3(tgt)
 
         return tgt
+
+def generate_square_subsequent_mask(size):
+    """
+    生成一個上三角矩陣的布林遮罩，用於遮蔽解碼器在預測時不看見未來訊息。
+    True 表示遮蔽。
+    """
+    mask = torch.triu(torch.ones(size, size), diagonal=1).bool()
+    return mask
