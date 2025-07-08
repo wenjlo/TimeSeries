@@ -303,7 +303,7 @@ class Transformer(nn.Module):
         # Create masks
         src_mask = self.create_padding_mask(src, src_pad_idx)  # For encoder self-attention & decoder cross-attention
         trg_padding_mask = self.create_padding_mask(trg, trg_pad_idx)  # For decoder self-attention
-        trg_look_ahead_mask = self.create_look_ahead_mask(trg.size(1), trg.device)  # For decoder self-attention
+        trg_look_ahead_mask = self.create_look_ahead_mask(trg.size(1), trg.device).unsqueeze(0)  # For decoder self-attention
         print(trg_padding_mask.shape)
         print(trg_look_ahead_mask.shape)
         # Combine decoder self-attention masks:
