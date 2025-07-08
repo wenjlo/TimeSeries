@@ -205,11 +205,11 @@ class TransformerDecoderLayer(nn.Module):
 
         # --- 1. 遮蔽多頭自注意力子層 ---
         # query, key, value 都來自 target sequence (tgt)
-        self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=False)
+        self.self_attn = MultiheadAttention(d_model, nhead, dropout=dropout)
 
         # --- 2. 編碼器-解碼器多頭注意力子層 (Cross-Attention) ---
         # query 來自 target sequence 的上一步輸出，key, value 來自 encoder 的記憶體 (memory)
-        self.multihead_attn = MultiheadAttention(d_model, nhead, dropout=dropout, batch_first=False)
+        self.multihead_attn = MultiheadAttention(d_model, nhead, dropout=dropout)
 
         # --- 3. 前饋神經網路 (FFN) 子層 ---
         self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -281,10 +281,14 @@ class TransformerDecoderLayer(nn.Module):
 
         return tgt
 
+
 def generate_square_subsequent_mask(size):
     """
     生成一個上三角矩陣的布林遮罩，用於遮蔽解碼器在預測時不看見未來訊息。
     True 表示遮蔽。
     """
-    mask = torch.triu(torch.ones(size, size), diagonal=1).bool()
+    mask = (torch.triu(torch.ones(size, size)) == 1).transpose(0, 1)
+    mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
     return mask
+
+
